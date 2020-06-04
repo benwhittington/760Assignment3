@@ -1,67 +1,66 @@
 import numpy as np
 
 
-def transition(x, max_sales, production, price, max_inventory):
-    transitions = []
-    rewards = []
-    available_for_sale = x + production
-
-    for s in range(min((max_sales + 1, available_for_sale + 1))):
-
-        inventory = available_for_sale - s
-
-        if inventory > max_inventory:
-            inventory = max_inventory
-
-        transitions.append(inventory)
-        rewards.append(price * s)
-
-    return transitions, rewards
-
-
-def dp(initial_inventory):
+def dp(initial_inventory, print_output=False):
     no_weeks = 13
     max_inventory = 10  # a
     max_sales = 5  # u_n
-    prices = [1, 2, 3, 1, 2, 2, 5, 4, 1, 1, 4, 4, 2]
-    production = [2, 1, 2, 1, 2, 2, 2, 1, 2, 3, 2, 1, 0]
+    prices = [1, 2, 3, 1, 2, 2, 5, 4, 1, 1, 4, 4, 2]  # pi
+    production = [2, 1, 2, 1, 2, 2, 2, 1, 2, 3, 2, 1, 0]  # w
 
     reward = [[-1 for _ in range(max_inventory + 1)] for _ in range(no_weeks + 1)]
     reward[0] = [-1 for _ in range(max_inventory + 1)]
-    reward[0][initial_inventory] = 0  # zero cost at starting node inventory
+    reward[0][initial_inventory] = 0  # zero starting reward
 
-    phi = [[-1 for _ in range(max_inventory + 1)] for _ in range(no_weeks + 1)]
+    phi = [[-1 for _ in range(max_inventory + 1)] for _ in range(no_weeks + 1)]  # predecessor
 
-    for n in range(no_weeks):
-        for x in range(max_inventory + 1):
+    for n in range(no_weeks):  # every stage
+        for x in range(max_inventory + 1):  # every inventory level
+
             if reward[n][x] == -1:  # if state (n, x) is unreachable
                 continue
 
-            next_inventory, rewards_n = transition(x, max_sales, production[n], prices[n], max_inventory)
+            available_for_sale = x + production[n]
 
-            for i, r in zip(next_inventory, rewards_n):
-                if r + reward[n][x] > reward[n+1][i]:
-                    reward[n+1][i] = r + reward[n][x]
-                    phi[n+1][i] = x
+            for s in range(min((max_sales + 1, available_for_sale + 1))):  # every sale in A_n(x)
+                x_next = available_for_sale - s  # x_next, inventory in next stage
 
-    decisions = []
+                if x_next > max_inventory:  # must discard excess stock
+                    x_next = max_inventory
+
+                r = prices[n] * s
+
+                # check if current choice of s is better than alternative path to next (stage, inventory)
+                if r + reward[n][x] > reward[n+1][x_next]:
+                    reward[n+1][x_next] = r + reward[n][x]
+                    phi[n+1][x_next] = x  # store predecessor info
+
+    # backtrack to compute best decisions, start with maximum reward
     best_i = np.argmax(reward[-1])
+    decisions = []
 
-    for p, r in zip(reversed(phi), reversed(reward)):
+    for p in reversed(phi):
         decisions.append(best_i)
         best_i = p[best_i]
 
-    print(decisions)
-    print("---------------")
-    print(np.matrix(phi))
-    print("---------------")
-    print(np.matrix(reward))
+    decisions.reverse()
+
+    if print_output:
+        print(np.matrix(phi))
+        print("---------------")
+        print(np.matrix(reward))
+
+    return decisions
 
 
 def main():
     initial_inventory = 9
-    dp(initial_inventory)
+    decisions = dp(initial_inventory, print_output=False)
+
+    print(decisions)
 
 
 if __name__ == "__main__":
+    # [0, 0, 4, 7, 4, 2, 6, 9, 7, 5, 4, 7, 10, 9]
+
     main()
